@@ -1,4 +1,10 @@
-import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -18,7 +24,7 @@ import {
 import type { TableProps } from "antd";
 import type { FormProps } from "antd";
 const { Sider, Content } = Layout;
-
+const API_URL = process.env.REACT_APP_API_URL;
 interface DataType {
   fromUser: string;
   message: string;
@@ -30,7 +36,8 @@ type FieldType = {
   message?: string;
 };
 
-const Lobby: React.FC = () => {
+const Lobby = () => {
+  const navigate = useNavigate();
   const [messagesToMe, setMessagesToMe] = useState([]);
   const [userList, setUserList] = useState([]);
 
@@ -51,12 +58,9 @@ const Lobby: React.FC = () => {
   const fetchMyMessage = async () => {
     const userStr = sessionStorage.getItem("user") ?? "";
     const user = JSON.parse(userStr);
-    const response = await axios.post(
-      "http://localhost:5000/api/fetchMyMessage",
-      {
-        toUserId: user.userId,
-      }
-    );
+    const response = await axios.post(`${API_URL}/api/fetchMyMessage`, {
+      toUserId: user.userId,
+    });
 
     setMessagesToMe(
       response.data.map((user: DataType, index: any) => ({
@@ -68,7 +72,7 @@ const Lobby: React.FC = () => {
 
   // 获取数据
   const fetchUserData = async () => {
-    const response = await axios.get("http://localhost:5000/api/getUserList");
+    const response = await axios.get(`${API_URL}/api/getUserList`);
     // 为每个用户项添加唯一的 key
 
     setUserList(
@@ -80,7 +84,11 @@ const Lobby: React.FC = () => {
   };
 
   useEffect(() => {
-    // testSession();
+    const userStr = sessionStorage.getItem("user") ?? "";
+    if (!userStr) {
+      navigate("/login");
+      return;
+    }
     fetchUserData();
     fetchMyMessage();
   }, []);
@@ -128,7 +136,7 @@ const Lobby: React.FC = () => {
 
     const userStr = sessionStorage.getItem("user") ?? "";
     const user = JSON.parse(userStr);
-    const res = await axios.post("http://localhost:5000/api/addMessage", {
+    const res = await axios.post(`${API_URL}/api/addMessage`, {
       fromUserId: user.userId,
       toUserId: values.toUserId,
       message: values.message,
@@ -147,62 +155,70 @@ const Lobby: React.FC = () => {
   ) => {
     console.log("Failed:", errorInfo);
   };
+  const userStr = sessionStorage.getItem("user") ?? "";
 
   return (
     <div>
-      {" "}
-      <h1>りゅうたろう！頑張れ！</h1>
-      要望があったらここにメッセージを残してください
-      <div>
-        <Form
-          name="basic"
-          labelCol={{ span: 8 }}
-          wrapperCol={{ span: 16 }}
-          style={{ maxWidth: 600 }}
-          initialValues={{ remember: true }}
-          onFinish={onFinish}
-          onFinishFailed={onFinishFailed}
-          autoComplete="off"
-        >
-          <Form.Item<FieldType>
-            label="宛先"
-            name="toUserId"
-            rules={[{ required: true, message: "Please input your toUserId!" }]}
-          >
-            <Select
-              // defaultValue="lucy"
-              style={{ width: 120 }}
-              // onChange={handleChange}
-              options={userList}
-            />
-          </Form.Item>
+      {!userStr ? null : (
+        <div>
+          <h1>りゅうたろう！頑張れ！</h1>
+          要望があったらここにメッセージを残してください
+          <div>
+            <Form
+              name="basic"
+              labelCol={{ span: 8 }}
+              wrapperCol={{ span: 16 }}
+              style={{ maxWidth: 600 }}
+              initialValues={{ remember: true }}
+              onFinish={onFinish}
+              onFinishFailed={onFinishFailed}
+              autoComplete="off"
+            >
+              <Form.Item<FieldType>
+                label="宛先"
+                name="toUserId"
+                rules={[
+                  { required: true, message: "Please input your toUserId!" },
+                ]}
+              >
+                <Select
+                  // defaultValue="lucy"
+                  style={{ width: 120 }}
+                  // onChange={handleChange}
+                  options={userList}
+                />
+              </Form.Item>
 
-          <Form.Item<FieldType>
-            label="メッセージ内容"
-            name="message"
-            rules={[{ required: true, message: "Please input your message!" }]}
-          >
-            <Input.TextArea />
-          </Form.Item>
-          <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
-            <Button type="primary" htmlType="submit">
-              Submit
+              <Form.Item<FieldType>
+                label="メッセージ内容"
+                name="message"
+                rules={[
+                  { required: true, message: "Please input your message!" },
+                ]}
+              >
+                <Input.TextArea />
+              </Form.Item>
+              <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+                <Button type="primary" htmlType="submit">
+                  Submit
+                </Button>
+              </Form.Item>
+            </Form>
+          </div>
+          <div>
+            <Button
+              style={{ marginRight: 5 }}
+              type="primary"
+              onClick={() => {
+                fetchMyMessage();
+              }}
+            >
+              リフレッシュ
             </Button>
-          </Form.Item>
-        </Form>
-      </div>
-      <div>
-        <Button
-          style={{ marginRight: 5 }}
-          type="primary"
-          onClick={() => {
-            fetchMyMessage();
-          }}
-        >
-          リフレッシュ
-        </Button>
-        <Table dataSource={messagesToMe} columns={columns} />;
-      </div>
+            <Table dataSource={messagesToMe} columns={columns} />;
+          </div>
+        </div>
+      )}
     </div>
   );
 };
